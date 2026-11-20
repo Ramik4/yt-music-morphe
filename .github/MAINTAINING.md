@@ -4,13 +4,20 @@
 
 1. **Source APK** — the original YouTube Music APK (arm64, full APK) is attached to the draft release `source`. Replace it when a new version is supported. Do not delete or publish this draft.
 2. **Actions → Release YT Music Morphe → Run workflow**
-   - `patches`: `stable` (latest stable Morphe release) or `dev` (latest dev release)
-   - `publish`: unchecked builds a test APK (clone variant only) into the run's *Artifacts*
+   - `rlx`: `release` (latest RLX Patches release), a release tag such as `v2.4.6`, or a branch of RLX Patches (test builds only)
+   - `publish`: unchecked builds a test APK (Original_BBK only) into the run's *Artifacts*
    - `update_preview` (test builds): the APK offers the latest release, to see the update dialog
 
-Every published build becomes the latest release. The workflow builds the official Morphe patches with the changes in `addons/morphe/` and the additions in `extras/`, verifies package name and signature, uploads the two APKs to R2, publishes the release (`YT_Music_Settings_v<patches version>.txt` with the settings of `settings/defaults.json`, and links to the APKs on R2) and updates `updates/*.json` for the in-app update check.
+Every published build becomes the latest release. The workflow builds [RLX Patches](https://github.com/Ramik4/rlx-patches) from source with the changes in `addons/morphe/` (sheet menus in the menu color) and the additions in `extras/` (update checker, menu color, experimental notice), patches the source APK with the patches RLX Patches enables by default, verifies package name and signature, uploads the two APKs to R2, publishes the release (links to the APKs on R2) and updates `updates/*.json` for the in-app update check. Settings, theme colors and icons come from RLX Patches.
 
-The changelog is generated from the Morphe changelog (YouTube Music only), in the same way as in `youtube-morphe`. Bug fixes are not listed one by one: the notes end with the heading `🔧 Bug fixes and other improvements`, followed in the release notes by the reminder to install the downloaded APK from the Downloads folder (`notes/mod-fixes.md` is kept as a record only); important features of skipped versions under `## <patches version>` in `notes/extra-features.md`; the features of the mod are in `notes/mod-features.md`.
+| Variant | File | Package | Theme color |
+|---|---|---|---|
+| `morphe` | `YT_Music_Morphe-v<YT Music>_RLX-v<RLX>_Amoled.apk` | `app.morphe.android.apps.youtube.music` | Pure black by default (Theme option `inAppDefaultColors`: `pure_black`) |
+| `apple` | `YT_Music_Morphe-v<YT Music>_RLX-v<RLX>_Original_BBK.apk` | `com.apple.android.music` (Clone app) | RLX #0F0F0F by default (`rlx`) |
+
+Test builds add the build number: `..._RLX-v<RLX>-b<build>_Original_BBK.apk`. Release tags are `v<YT Music>-rlx<RLX>-p<Morphe>-b<build>` (earlier releases: `v<YT Music>-p<Morphe>-b<build>`).
+
+The changelog is generated from the Morphe changelog included in RLX Patches (YouTube Music only, for the Morphe version RLX Patches is based on), in the same way as in `youtube-morphe`. Bug fixes are not listed one by one: the notes end with the heading `🔧 Bug fixes and other improvements`, followed in the release notes by the reminder to install the downloaded APK from the Downloads folder (`notes/mod-fixes.md` is kept as a record only); important features of skipped versions under `## <patches version>` in `notes/extra-features.md`; the features of the mod are in `notes/mod-features.md`.
 
 The first dev build after a stable version that was not released here (such as 2.3.0-dev.1 after 2.2.0) also lists the full changelog of that stable version, after the changes of the dev version.
 
@@ -31,12 +38,10 @@ The first dev build after a stable version that was not released here (such as 2
 
 | File | Purpose |
 |---|---|
-| `settings/defaults.json` | Recommended settings (Morphe settings export). Each setting is applied once: on first install, or on the update that adds it. |
-| `branding/` | App icon (`mipmap-*`), header logo and notification icon (`drawable-*`) |
-| `extras/` | Additional patches: theme defaults, menu colors, default settings, update check, restart on update, experimental notice. Strings of `extras/strings/<locale>/` are appended to the YouTube Music ones (strings that Morphe already has are left out) |
-| `addons/morphe/` | Changes of the mod to official Morphe files (`git apply` patches, applied in name order; skipped once Morphe includes them, the build fails if one no longer applies). `quick-download-quality-menu.patch` is the same file as in `youtube-morphe`; `sheet-menus-color.patch` builds on it. Their new strings in other languages go to `extras/strings/` |
+| `extras/` | Additional patches: update check, menu color (menus and sheets in the theme color, #0F0F0F with pure black), experimental notice. Strings of `extras/strings/<locale>/` are appended to the YouTube Music ones (the build fails if RLX Patches already has one of them). The update checker also turns off the patches update check of the RLX about page |
+| `addons/morphe/` | Changes of the mod to RLX Patches files (`git apply` patches, applied in name order; skipped once RLX Patches includes them, the build fails if one no longer applies): `sheet-menus-color.patch` (the sheets of RLX Patches in the menu color) |
 
-Variant options (package, theme defaults) are set in `build_variant` calls of `.github/workflows/release.yml`.
+Variant options (package, theme colors) are set in `build_variant` calls of `.github/workflows/release.yml`. Settings, icons and theme defaults come from RLX Patches (`rlx/defaults.json` there).
 
 ## Downloads (Cloudflare R2)
 

@@ -1,6 +1,6 @@
 <!-- Important features of skipped Morphe versions, listed after the Morphe new features of the same patches version.
      Only for releases that skip versions (such as the first dev build after a stable one), or for a new feature of the mod
-     in that version (such as a change of addons/morphe/); most versions have no section. -->
+     in that version (such as a new feature of RLX Patches); most versions have no section. -->
 
 ## 2.3.0-dev.1
 

@@ -3,18 +3,10 @@ name: Release YT Music Morphe
 on:
   workflow_dispatch:
     inputs:
-      patches:
-        description: "Morphe patches"
+      rlx:
+        description: "RLX Patches: release (latest release), a release tag such as v2.4.6, or a branch (test builds only)"
         required: true
-        default: "stable"
-        type: choice
-        options:
-          - stable
-          - dev
-      patches_source:
-        description: "Test only: patches from a branch, as owner/repo@branch (empty: Morphe patches above)"
-        required: false
-        default: ""
+        default: "release"
         type: string
       publish:
         description: "Publish the release (unchecked: test build in Artifacts only)"
@@ -41,9 +33,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PATCHES_REPO: MorpheApp/morphe-patches
+  PATCHES_REPO: Ramik4/rlx-patches
   APP_TITLE: YT Music Morphe
-  APP_NAME: YT Music Morphe
+  FILE_PREFIX: YT_Music_Morphe
   APP_PACKAGE: com.google.android.apps.youtube.music
   # APKs and update info on Cloudflare R2 below music/, served by the Worker of RAMiK4/yt-morphe
   # (cloudflare/worker.js). DL_BASE_URL is required to publish
@@ -52,6 +44,8 @@ env:
   R2_PREFIX: music/
   STRIPLIBS: arm64-v8a
   FORUM_URL: ""   # 4PDA topic URL
+  # Time zone of the phone the test builds are unzipped on
+  LOCAL_TZ: Asia/Dubai
 
 jobs:
   release:
@@ -68,53 +62,49 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Resolve patches version
+      - name: Resolve RLX Patches version
         env:
-          CHANNEL: ${{ inputs.patches }}
-          SOURCE: ${{ inputs.patches_source }}
+          RLX: ${{ inputs.rlx }}
           PUBLISH: ${{ inputs.publish }}
         run: |
-          if [ -n "$SOURCE" ]; then
-            # A branch of a fork is only built for testing, never published
-            [ "$PUBLISH" != "true" ] || { echo "::error::A patches branch is for test builds only. Uncheck 'Publish the release'."; exit 1; }
-            echo "PATCHES_REPO=${SOURCE%@*}" >> "$GITHUB_ENV"
-            echo "PATCHES_TAG=${SOURCE#*@}" >> "$GITHUB_ENV"
-            echo "Patches: $SOURCE"
-            exit 0
-          fi
-          case "$CHANNEL" in
-            stable) TAG=$(gh api "repos/$PATCHES_REPO/releases/latest" -q .tag_name) ;;
-            dev)    TAG=$(gh api "repos/$PATCHES_REPO/releases?per_page=30" -q '[.[] | select(.prerelease and (.draft | not))][0].tag_name') ;;
-            *)         TAG=$(gh api "repos/$PATCHES_REPO/releases/tags/$CHANNEL" -q .tag_name) ;;
+          case "$RLX" in
+            release|"") REF=$(gh api "repos/$PATCHES_REPO/releases/latest" -q .tag_name) ;;
+            v[0-9]*)    REF=$(gh api "repos/$PATCHES_REPO/releases/tags/$RLX" -q .tag_name) ;;
+            *)
+              # A branch is only built for testing, never published
+              [ "$PUBLISH" != "true" ] || { echo "::error::A branch of RLX Patches is for test builds only. Uncheck 'Publish the release'."; exit 1; }
+              REF=$RLX ;;
           esac
-          [ -n "$TAG" ] && [ "$TAG" != null ] || { echo "::error::Patches version '$CHANNEL' not found"; exit 1; }
-          echo "Patches: $TAG"
-          echo "PATCHES_TAG=$TAG" >> "$GITHUB_ENV"
-          echo "PATCHES_VER=${TAG#v}" >> "$GITHUB_ENV"
+          [ -n "$REF" ] && [ "$REF" != null ] || { echo "::error::RLX Patches '$RLX' not found"; exit 1; }
+          echo "RLX Patches: $REF"
+          echo "PATCHES_REF=$REF" >> "$GITHUB_ENV"
 
-      - name: Checkout patches
+      - name: Checkout RLX Patches
         uses: actions/checkout@v5
         with:
           repository: ${{ env.PATCHES_REPO }}
-          ref: ${{ env.PATCHES_TAG }}
+          ref: ${{ env.PATCHES_REF }}
           path: patches-src
 
-      - name: Read patches version
-        if: ${{ inputs.patches_source != '' }}
+      - name: Read versions
         run: |
-          VER=$(sed -n 's/^version *= *//p' patches-src/gradle.properties)
-          echo "Patches version: $VER"
-          echo "PATCHES_VER=$VER" >> "$GITHUB_ENV"
+          # RLX version (rlx/rlx.properties) and the Morphe version it is based on (gradle.properties)
+          RLX_VER=$(sed -n 's/^version *= *//p' patches-src/rlx/rlx.properties)
+          PATCHES_VER=$(sed -n 's/^version *= *//p' patches-src/gradle.properties)
+          [ -n "$RLX_VER" ] && [ -n "$PATCHES_VER" ] || { echo "::error::Could not read the RLX and Morphe versions"; exit 1; }
+          echo "RLX Patches $RLX_VER, Morphe $PATCHES_VER"
+          echo "RLX_VER=$RLX_VER" >> "$GITHUB_ENV"
+          echo "PATCHES_VER=$PATCHES_VER" >> "$GITHUB_ENV"
 
       - name: Generate changelog
         run: |
-          # YouTube Music part of the Morphe changelog: the new features of a stable version's own section,
-          # or of all dev versions since the last one released here. Fixes are not listed: the notes
-          # end with a "Bug fixes and other improvements" heading. Changes keep the order of the Morphe changelog.
-          # Patches versions that already have a release: tags v<yt>-p<patches>-b<build>
+          # YouTube Music part of the Morphe changelog (RLX Patches includes it): the new features of a stable
+          # version's own section, or of all dev versions since the last one released here. Fixes are not listed:
+          # the notes end with a "Bug fixes and other improvements" heading. Changes keep the order of the Morphe changelog.
+          # Morphe versions that already have a release: tags v<yt>-rlx<rlx>-p<morphe>-b<build> (earlier: v<yt>-p<morphe>-b<build>)
           gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName -q '.[].tagName' \
-            | sed -n 's/^v[^-]*-p\(.*\)-b[0-9]*$/\1/p' > "$RUNNER_TEMP/released.txt"
-          echo "Released patches versions: $(tr '\n' ' ' < "$RUNNER_TEMP/released.txt")"
+            | sed -n 's/^v[^-]*-\(rlx[^-]*-\)\{0,1\}p\(.*\)-b[0-9]*$/\2/p' > "$RUNNER_TEMP/released.txt"
+          echo "Released Morphe versions: $(tr '\n' ' ' < "$RUNNER_TEMP/released.txt")"
           python3 -I scripts/changelog.py patches-src/CHANGELOG.md "$PATCHES_VER" \
             "$RUNNER_TEMP/changes.md" "$RUNNER_TEMP/changes.txt" \
             --mod-features notes/mod-features.md \
@@ -124,33 +114,33 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build patches (official + extras)
+      - name: Build patches (RLX + extras)
         working-directory: patches-src
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Changes of the mod to official Morphe files (addons/morphe/*.patch, in name order: such as
-          # features sent to Morphe that are not merged yet), skipped once Morphe includes them
+          # Changes of the mod to RLX Patches files (addons/morphe/*.patch, in name order), skipped once
+          # RLX Patches includes them
           for f in "$GITHUB_WORKSPACE"/addons/morphe/*.patch; do
             [ -f "$f" ] || continue
             if git apply --check "$f" 2>/dev/null; then
               git apply "$f"
               echo "Applied: $(basename "$f")"
             elif git apply --check -R "$f" 2>/dev/null; then
-              echo "::notice::$(basename "$f") is already in Morphe $PATCHES_TAG, skipped"
+              echo "::notice::$(basename "$f") is already in RLX Patches $PATCHES_REF, skipped"
             else
-              echo "::error::$(basename "$f") no longer applies to Morphe $PATCHES_TAG"
+              echo "::error::$(basename "$f") no longer applies to RLX Patches $PATCHES_REF"
               exit 1
             fi
           done
-          # Additional patches and code from extras/ are added to the official ones.
-          # Extras only add files: the official Morphe files are never replaced.
+          # Additional patches of the mod (extras/: update checker, menu color, experimental notice) are added to
+          # RLX Patches. Extras only add files: the RLX files are never replaced.
           clash=0
           for dir in patches extensions; do
             while IFS= read -r -d '' f; do
               rel=${f#"$GITHUB_WORKSPACE/extras/$dir/"}
               if [ -e "$dir/$rel" ]; then
-                echo "::error::extras/$dir/$rel would replace an official Morphe file"
+                echo "::error::extras/$dir/$rel would replace an RLX Patches file"
                 clash=1
               fi
             done < <(find "$GITHUB_WORKSPACE/extras/$dir" -type f -print0)
@@ -158,34 +148,31 @@ jobs:
           [ "$clash" -eq 0 ] || exit 1
           cp -rv "$GITHUB_WORKSPACE"/extras/patches/. patches/
           cp -rv "$GITHUB_WORKSPACE"/extras/extensions/. extensions/
-          # Strings and arrays from extras/strings/<locale>/{strings,arrays}.xml are appended to the YouTube Music ones
-          for src in "$GITHUB_WORKSPACE"/extras/strings/*/strings.xml "$GITHUB_WORKSPACE"/extras/strings/*/arrays.xml; do
+          # Strings from extras/strings/<locale>/strings.xml are appended to the YouTube Music ones
+          for src in "$GITHUB_WORKSPACE"/extras/strings/*/strings.xml; do
             [ -f "$src" ] || continue
             loc=$(basename "$(dirname "$src")")
-            dst="patches/src/main/resources/addresources/$loc/music/$(basename "$src")"
+            dst="patches/src/main/resources/addresources/$loc/music/strings.xml"
             [ -f "$dst" ] || { echo "::error::Strings file $dst not found"; exit 1; }
             python3 - "$src" "$dst" <<'PY'
           import re, sys
           src, dst = sys.argv[1], sys.argv[2]
           extra = open(src, encoding="utf-8").read()
           text = open(dst, encoding="utf-8").read()
-          # Strings that Morphe already has (a translation that reached Crowdin) are left out
           names = set(re.findall(r'<(?:string|string-array|plurals) name="([^"]+)"', text))
-          kept = []
-          for line in extra.splitlines(keepends=True):
-              m = re.search(r'<(?:string|string-array|plurals) name="([^"]+)"', line)
-              if m and m.group(1) in names and line.rstrip().endswith("</string>"):
-                  print(f"Skipped, already in Morphe: {m.group(1)}")
-                  continue
-              kept.append(line)
-          extra = "".join(kept)
+          clash = sorted(set(re.findall(r'<string name="([^"]+)"', extra)) & names)
+          if clash:
+              sys.exit(f"::error::Strings already in RLX Patches: {', '.join(clash)}")
           i = text.rindex("</resources>")
           open(dst, "w", encoding="utf-8").write(text[:i] + extra + text[i:])
           PY
             echo "Added: $loc/$(basename "$src")"
           done
+          ./gradlew :patches:generatePatchesList --no-daemon
           ./gradlew :patches:buildAndroid --no-daemon
-          cp patches/build/libs/patches-*.mpp "$RUNNER_TEMP/patches.mpp"
+          ls patches/build/libs/
+          cp patches/build/libs/rlx-patches-*.mpp "$RUNNER_TEMP/patches.mpp"
+          cp patches-list.json "$RUNNER_TEMP/patches-list.json"
 
       - name: Download Morphe CLI
         run: |
@@ -240,12 +227,16 @@ jobs:
           java -jar "$CLI" options-create -p "$RUNNER_TEMP/patches.mpp" \
             -o "$RUNNER_TEMP/base.json" -f "$APP_PACKAGE"
           [ "$(jq length "$RUNNER_TEMP/base.json")" -eq 1 ] || { echo "::error::Expected 1 patch bundle in the options file"; exit 1; }
-          # All YouTube Music patches (without universal patches)
-          java -jar "$CLI" list-patches --patches "$RUNNER_TEMP/patches.mpp" \
-            --filter-package-name "$APP_PACKAGE" \
-            --with-universal-patches=false --with-descriptions=false \
-            | sed -n 's/^Name: //p' | jq -R . | jq -s . > "$RUNNER_TEMP/app-patches.json"
+          # The patches Morphe Manager selects for YouTube Music: those enabled by default (with the
+          # universal ones), as in RLX Patches
+          jq --arg pkg "$APP_PACKAGE" '[.patches[] | select(.default and ((.compatiblePackages == null)
+                 or (.compatiblePackages | any(.packageName == $pkg)))) | .name] | unique' \
+            "$RUNNER_TEMP/patches-list.json" > "$RUNNER_TEMP/app-patches.json"
           echo "YouTube Music patches: $(jq length "$RUNNER_TEMP/app-patches.json")"
+          for p in "Update checker" "Menu color" "Hide experimental app notice"; do
+            jq -e --arg p "$p" 'index($p) != null' "$RUNNER_TEMP/app-patches.json" >/dev/null \
+              || { echo "::error::Patch of the mod not found: $p"; exit 1; }
+          done
 
       - name: Restore keystore
         env:
@@ -277,7 +268,7 @@ jobs:
           }
           trap report ERR
           BUILD=${{ github.run_number }}
-          TAG="v${YT_VERSION}-p${PATCHES_VER}-b${BUILD}"
+          TAG="v${YT_VERSION}-rlx${RLX_VER}-p${PATCHES_VER}-b${BUILD}"
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           mkdir -p "$RUNNER_TEMP/out"
           echo "BUILD=$BUILD" >> "$GITHUB_ENV"
@@ -302,11 +293,6 @@ jobs:
             CHECK_BUILD=1
           fi
 
-          # One branding/ folder: mipmap-* (icon), drawable-* (header logo + notification icon)
-          ICON=""; HEADER=""
-          ls -d branding/mipmap-* >/dev/null 2>&1 && ICON="$GITHUB_WORKSPACE/branding"
-          ls branding/drawable-*/morphe_header_custom_*.png >/dev/null 2>&1 && HEADER="$GITHUB_WORKSPACE/branding"
-
           update_url() {
             if [ -n "$DL_BASE_URL" ]; then echo "$DL_BASE_URL/${R2_PREFIX}updates/$1$UPD_SUFFIX.json"
             else echo "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/updates/$1.json"; fi
@@ -316,25 +302,21 @@ jobs:
             else echo "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$1"; fi
           }
 
-          # $1 id, $2 file name label, $3 safe file name, $4 package, $5 clone, $6 theme defaults (JSON)
+          # $1 id, $2 file name suffix, $3 package, $4 clone, $5 default colors in the app (rlx, pure_black)
           build_variant() {
-            local id=$1 label=$2 safe=$3 pkg=$4 clone=$5 theme=$6
+            local id=$1 suffix=$2 pkg=$3 clone=$4 colors=$5
             local opts="$RUNNER_TEMP/options-$id.json"
-            local base="YT_Music_Morphe-v${YT_VERSION}-p${PATCHES_VER}"
-            # The asset label is the file name, so the release page shows the name of the downloaded file
-            local out="$RUNNER_TEMP/out/${base}_${safe}.apk"
-            echo "${base}_${label}.apk" > "$out.label"
-            local icon="$ICON" header="$HEADER"
+            local base="${FILE_PREFIX}-v${YT_VERSION}_RLX-v${RLX_VER}"
+            # Test builds keep their build number, so that two of them are told apart on the phone
+            [ "${{ inputs.publish }}" = "true" ] || base="${base}-b${BUILD}"
+            local out="$RUNNER_TEMP/out/${base}_${suffix}.apk"
 
             echo "::group::Variant $id ($pkg)"
             jq --slurpfile yt "$RUNNER_TEMP/app-patches.json" \
-               --argjson clone "$clone" --arg pkg "$pkg" \
-               --argjson theme "$theme" \
+               --argjson clone "$clone" --arg pkg "$pkg" --arg colors "$colors" \
                --arg updurl "$(update_url "$id")" \
                --arg build "$CHECK_BUILD" \
-               --arg verinfo "v$YT_VERSION p$PATCHES_VER · Build $BUILD" \
-               --arg defaults "$(jq -c . settings/defaults.json)" \
-               --arg name "$APP_NAME" --arg icon "$icon" --arg header "$header" '
+               --arg verinfo "v$YT_VERSION · RLX $RLX_VER · Build $BUILD" '
               def opt($p; $k; $v): if .[0].patches[$p] then .[0].patches[$p].options[$k] = $v
                                    else error("Patch not found: " + $p) end;
               .[0].patches |= with_entries(
@@ -343,15 +325,13 @@ jobs:
               )
               | .[0].patches["Clone app"].enabled = $clone
               | if $clone then opt("Clone app"; "packageName"; $pkg) else . end
+              # Theme color changed in the app, starting with the color of the variant
               | opt("Theme"; "darkThemeColor"; "in-app")
-              | reduce ($theme | to_entries[]) as $e (.; opt("Theme defaults"; $e.key; $e.value))
+              | opt("Theme"; "inAppDefaultColors"; $colors)
+              # Patches of the mod (extras/)
               | opt("Update checker"; "updateUrl"; $updurl)
               | opt("Update checker"; "buildNumber"; $build)
               | opt("Update checker"; "versionInfo"; $verinfo)
-              | opt("Default settings"; "settings"; $defaults)
-              | opt("Custom branding"; "customName"; $name)
-              | if $icon != "" then opt("Custom branding"; "customIcon"; $icon) else . end
-              | if $header != "" then opt("Change header"; "custom"; $header) else . end
             ' "$RUNNER_TEMP/base.json" > "$opts"
             jq -r '.[].patches | to_entries[] | select(.value.enabled) | "  ✓ \(.key)"' "$opts"
 
@@ -405,7 +385,7 @@ jobs:
             done
             jq -n \
               --argjson build "$BUILD" --arg variant "$id" --arg pkg "$pkg" \
-              --arg yt "$YT_VERSION" --arg patches "$PATCHES_VER" --arg tag "$TAG" \
+              --arg yt "$YT_VERSION" --arg patches "$RLX_VER" --arg tag "$TAG" \
               --arg apk "$(apk_url "$name")" \
               --arg page "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" \
               --arg forum "$FORUM_URL" --arg changelog "$changelog" \
@@ -419,17 +399,21 @@ jobs:
             echo "::endgroup::"
           }
 
-          # Original: dark #0F0F0F as a custom color, so that the menus get it too (APP_DEFAULT keeps their own color)
-          build_variant apple  "Original_Mod_BBK_Clone" "Original_Mod_BBK_Clone" \
-            com.apple.android.music true \
-            '{"darkDefault":"CUSTOM"}'
-          # Amoled: black #000000 (Morphe default)
-          # Test builds (not published): only the clone variant, which is the one tested
-          if [ "${{ inputs.publish }}" != "false" ] && [ -z "${{ inputs.patches_source }}" ]; then
-          build_variant morphe "Amoled_Mod"             "Amoled_Mod" \
-            app.morphe.android.apps.youtube.music false \
-            '{}'
+          # Original_BBK: clone com.apple.android.music, the RLX color (dark #0F0F0F) and settings
+          build_variant apple  "Original_BBK" com.apple.android.music              true  rlx
+          # Amoled: pure black by default; test builds (not published): only the clone variant, which is the one tested
+          if [ "${{ inputs.publish }}" = "true" ]; then
+          build_variant morphe "Amoled"       app.morphe.android.apps.youtube.music false pure_black
           fi
+
+      - name: Set local time of test build
+        if: ${{ !inputs.publish }}
+        run: |
+          # The artifact zip stores the time without a time zone, as the UTC time of the runner, and the
+          # phone reads it as local time. The APKs get the local time instead, so they show when they were made.
+          NOW=$(TZ="$LOCAL_TZ" date '+%Y-%m-%d %H:%M:%S')
+          touch -d "$NOW" "$RUNNER_TEMP"/out/*.apk
+          ls -l "$RUNNER_TEMP"/out/
 
       - name: Upload test build
         if: ${{ !inputs.publish }}
@@ -486,26 +470,24 @@ jobs:
       - name: Publish release
         if: ${{ inputs.publish }}
         run: |
-          CLONE=$(basename "$RUNNER_TEMP"/out/*BBK_Clone.apk)
-          MORPHE=$(basename "$RUNNER_TEMP"/out/*Amoled_Mod.apk)
-          # Recommended settings (settings/defaults.json), imported in Morphe settings → Other → Backup settings
-          SETTINGS="YT_Music_Settings_v${PATCHES_VER}.txt"
-          jq . settings/defaults.json > "$RUNNER_TEMP/$SETTINGS"
+          CLONE=$(basename "$RUNNER_TEMP"/out/*_Original_BBK.apk)
+          MORPHE=$(basename "$RUNNER_TEMP"/out/*_Amoled.apk)
           # The APKs are on R2 only (uploaded in the step before), the release links to them
           apk_link() { echo "[\`$1\`]($DL_BASE_URL/${R2_PREFIX}apk/$1)"; }
           {
+            echo "Built with [RLX Patches $RLX_VER](https://github.com/$PATCHES_REPO/releases/tag/$PATCHES_REF) (Morphe $PATCHES_VER)."
+            echo
             cat "$RUNNER_TEMP/changes.md"
             echo
             echo "## 📦 Files"
             echo
-            echo "| File | Theme |"
-            echo "|---|---|"
-            echo "| $(apk_link "$MORPHE") | Pure black by default |"
-            echo "| $(apk_link "$CLONE") | Modern dark by default |"
-            echo "| \`$SETTINGS\` | Recommended settings |"
+            echo "| File | Package | Theme |"
+            echo "|---|---|---|"
+            echo "| $(apk_link "$MORPHE") | \`app.morphe.android.apps.youtube.music\` | Pure black by default |"
+            echo "| $(apk_link "$CLONE") | \`com.apple.android.music\` (clone) | RLX dark #0F0F0F by default |"
           } > "$RUNNER_TEMP/notes.md"
-          gh release create "$TAG" "$RUNNER_TEMP/$SETTINGS#$SETTINGS" \
-            --title "$APP_TITLE v$YT_VERSION p$PATCHES_VER (Mod)" \
+          gh release create "$TAG" \
+            --title "$APP_TITLE v$YT_VERSION · RLX $RLX_VER" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             --latest
 
