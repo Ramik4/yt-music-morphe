@@ -20,11 +20,16 @@ import app.morphe.util.copyResources
 private const val EXTENSION_CLASS =
     "Lapp/morphe/extension/music/patches/updates/UpdateCheckerPatch;"
 
+// The about page of RLX Patches looks up the latest release of the patches, which a build of the mod does
+// not offer: the mod checks for its own builds instead.
+private const val RLX_ABOUT_PAGE_CLASS =
+    "Lapp/morphe/extension/shared/settings/preference/about/RlxAboutPage;"
+
 private const val PREFERENCE_CLASS =
     "app.morphe.extension.music.settings.preference.UpdateCheckPreference"
 
-// Sorted by key in the root menu: right below "About" (0_about).
-private const val SCREEN_KEY = "morphe_settings_music_screen_0_updates"
+// Sorted by key in the root menu: right below "About" (00_about), above RLX Customizations (00_rlx_customizations).
+private const val SCREEN_KEY = "morphe_settings_music_screen_00_about_updates"
 private const val ICON_NAME = "morphe_settings_screen_00_updates"
 
 private val updateCheckerResourcePatch = resourcePatch {
@@ -98,6 +103,10 @@ val updateCheckerPatch = bytecodePatch(
         replace("updateUrl", url)
         replace("currentBuild", buildNumber!!)
         replace("versionInfo", versionInfo.orEmpty())
+
+        mutableClassDefByOrNull(RLX_ABOUT_PAGE_CLASS)?.methods
+            ?.firstOrNull { it.name == "fetchLatestVersion" }
+            ?.returnEarly()
 
         MusicActivityOnCreateFingerprint.method.addInstruction(
             0,

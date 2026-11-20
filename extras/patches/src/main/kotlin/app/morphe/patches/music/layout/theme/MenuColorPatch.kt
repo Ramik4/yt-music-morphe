@@ -3,6 +3,7 @@ package app.morphe.patches.music.layout.theme
 import app.morphe.patcher.patch.listDecodableFiles
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.patch.resourceXml
+import app.morphe.patches.music.shared.Constants.COMPATIBILITY_YOUTUBE_MUSIC
 
 /** The color of the dark theme the Theme patch selects at runtime, declared by every dark variant. */
 private const val THEME_COLOR_DARK = "morphe_theme_color_dark"
@@ -33,8 +34,14 @@ private const val RAISED_BACKGROUND_COLOR = "yt_sys_color_baseline_mobile_dark_d
  * replaces. The item gets a color of its own here that follows the theme color, as in YT Morphe.
  * With pure black it is #0F0F0F instead, and with the app default theme color the app's own color.
  */
-internal val menuColorPatch = patch {
+@Suppress("unused")
+val menuColorPatch = patch(
+    name = "Menu color",
+    description = "Menus and sheets in the theme color of the app, with #0F0F0F for a pure black theme.",
+) {
     dependsOn(themePatch)
+
+    compatibleWith(COMPATIBILITY_YOUTUBE_MUSIC)
 
     execute {
         // Only with the theme colors of the app settings: a color set while patching replaces everything itself.
