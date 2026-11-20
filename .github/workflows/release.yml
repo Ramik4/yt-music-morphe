@@ -108,7 +108,8 @@ jobs:
           python3 -I scripts/changelog.py patches-src/CHANGELOG.md "$PATCHES_VER" \
             "$RUNNER_TEMP/changes.md" "$RUNNER_TEMP/changes.txt" \
             --mod-features notes/mod-features.md \
-            --extra-features notes/extra-features.md --released "$RUNNER_TEMP/released.txt"
+            --extra-features notes/extra-features.md --released "$RUNNER_TEMP/released.txt" \
+            --skipped-features notes/skipped-features.md
           cat "$RUNNER_TEMP/changes.txt"
 
       - name: Setup Gradle
@@ -487,8 +488,8 @@ jobs:
             echo
             echo "| File | Package | Theme |"
             echo "|---|---|---|"
-            echo "| $(apk_link "$MORPHE") | \`app.morphe.android.apps.youtube.music\` | Pure black by default |"
-            echo "| $(apk_link "$CLONE") | \`com.apple.android.music\` (clone) | RLX dark #0F0F0F by default |"
+            echo "| $(apk_link "$MORPHE") | \`app.morphe.android.apps.youtube.music\` | All in-app themes, Pure Black by default |"
+            echo "| $(apk_link "$CLONE") | \`com.apple.android.music\` (clone) | All in-app themes, Modern Dark by default |"
           } > "$RUNNER_TEMP/notes.md"
           gh release create "$TAG" \
             --title "$APP_TITLE v$YT_VERSION · RLX $RLX_VER" \

@@ -32,7 +32,7 @@ versions that the selected sections do not list. Not a general rule; most versio
 The Markdown file is the release notes, the text file is the changelog of the in-app update dialog.
 
 Usage: changelog.py CHANGELOG.md VERSION OUT_MARKDOWN OUT_TEXT [--mod-features FILE]
-                    [--extra-features FILE] [--released FILE]
+                    [--extra-features FILE] [--released FILE] [--skipped-features FILE]
 """
 import argparse
 import re
@@ -167,6 +167,7 @@ def main():
     parser.add_argument("--mod-features")
     parser.add_argument("--extra-features")
     parser.add_argument("--released")
+    parser.add_argument("--skipped-features")
     args = parser.parse_args()
 
     version = args.version.lstrip("v")
@@ -174,6 +175,9 @@ def main():
     selected = select(parse(args.changelog), version, released)
     extra_features = read_version_items(args.extra_features, version) if args.extra_features else []
     mod_features = read_mod_features(args.mod_features) if args.mod_features else []
+    # Morphe features that do not apply to the mod (such as changes of the Morphe about page, which RLX
+    # Patches replaces): an item is left out when it contains one of these texts, without formatting.
+    skipped = [plain(t).lower() for t in read_mod_features(args.skipped_features)] if args.skipped_features else []
 
     groups = []
     features = []
@@ -181,6 +185,7 @@ def main():
         if item not in features:  # A change listed again in a later version
             features.append(item)
     features += extra_features
+    features = [item for item in features if not any(t in plain(item).lower() for t in skipped)]
     if features:
         groups.append((GROUPS[FEATURE_GROUP][1], features))
     # The features of the mod follow the new features of Morphe.
