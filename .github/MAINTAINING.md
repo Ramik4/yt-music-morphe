@@ -12,7 +12,7 @@ Every published build becomes the latest release. The workflow builds [RLX Patch
 
 | Variant | File | Package | Theme color |
 |---|---|---|---|
-| `morphe` | `YT_Music_Morphe-v<YT Music>_RLX-v<RLX>_Amoled.apk` | `app.morphe.android.apps.youtube.music` | Pure black by default (Theme option `inAppDefaultColors`: `pure_black`) |
+| `morphe` | `YT_Music_Morphe-v<YT Music>_RLX-v<RLX>_Amoled.apk` | `app.morphe.android.apps.youtube.music` | Pure black by default (Theme option `inAppDefaultColors`: `pure_black`, from RLX Patches 2.4.6; with 2.4.5 the RLX color) |
 | `apple` | `YT_Music_Morphe-v<YT Music>_RLX-v<RLX>_Original_BBK.apk` | `com.apple.android.music` (Clone app) | RLX #0F0F0F by default (`rlx`) |
 
 Test builds add the build number: `..._RLX-v<RLX>-b<build>_Original_BBK.apk`. Release tags are `v<YT Music>-rlx<RLX>-p<Morphe>-b<build>` (earlier releases: `v<YT Music>-p<Morphe>-b<build>`).
