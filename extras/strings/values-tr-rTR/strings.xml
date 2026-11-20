@@ -1,5 +1,5 @@
     <!-- extras: Update checker -->
-    <string name="morphe_settings_music_screen_0_updates_title">Güncellemeler</string>
+    <string name="morphe_settings_music_screen_00_about_updates_title">Güncellemeler</string>
     <string name="morphe_update_check_title">Güncellemeleri denetle</string>
     <string name="morphe_update_check_summary">Açılışta yeni sürümü denetle</string>
     <string name="morphe_update_check_now_title">Şimdi denetle</string>

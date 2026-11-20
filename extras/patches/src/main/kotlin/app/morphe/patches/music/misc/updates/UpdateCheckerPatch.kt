@@ -28,8 +28,8 @@ private const val RLX_ABOUT_PAGE_CLASS =
 private const val PREFERENCE_CLASS =
     "app.morphe.extension.music.settings.preference.UpdateCheckPreference"
 
-// Sorted by key in the root menu: right below "About" (0_about).
-private const val SCREEN_KEY = "morphe_settings_music_screen_0_updates"
+// Sorted by key in the root menu: right below "About" (00_about), above RLX Customizations (00_rlx_customizations).
+private const val SCREEN_KEY = "morphe_settings_music_screen_00_about_updates"
 private const val ICON_NAME = "morphe_settings_screen_00_updates"
 
 private val updateCheckerResourcePatch = resourcePatch {
