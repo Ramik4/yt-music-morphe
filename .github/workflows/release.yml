@@ -171,7 +171,7 @@ jobs:
           ./gradlew :patches:generatePatchesList --no-daemon
           ./gradlew :patches:buildAndroid --no-daemon
           ls patches/build/libs/
-          cp patches/build/libs/rlx-patches-*.mpp "$RUNNER_TEMP/patches.mpp"
+          cp "patches/build/libs/rlx-patches-${RLX_VER}.mpp" "$RUNNER_TEMP/patches.mpp"
           cp patches-list.json "$RUNNER_TEMP/patches-list.json"
 
       - name: Download Morphe CLI
