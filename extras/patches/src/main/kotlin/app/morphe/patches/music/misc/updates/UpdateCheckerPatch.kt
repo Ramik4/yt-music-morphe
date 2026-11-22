@@ -111,11 +111,13 @@ val updateCheckerPatch = bytecodePatch(
         val preferences = listOfNotNull(
             SwitchPreference("morphe_update_check", summary = true),
             // Every release, or stable builds only.
+            // The constructor with array resources passes its arguments in the wrong order (the class name
+            // of the preference becomes the array name, and the settings screen stays empty): the arrays are
+            // written by the resource patch and named here.
             if (stableUpdateUrl.isNullOrBlank()) null else ListPreference(
                 key = "morphe_update_channel",
-                summaryKey = null,
-                entries = CHANNEL_ENTRIES,
-                entryValues = CHANNEL_VALUES,
+                entriesKey = CHANNEL_ENTRIES.name,
+                entryValuesKey = CHANNEL_VALUES.name,
             ),
             NonInteractivePreference(
                 key = "morphe_update_check_now",

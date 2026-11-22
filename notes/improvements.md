@@ -3,8 +3,8 @@ Important changes of the mod, listed in the release notes under "🔧 Other impr
 One section per Morphe patches version the release is based on; most releases need none, then the heading
 stands alone. Example:
 
-## 2.4.0-dev.8
-* Downloads: the quality menu lists one file per quality
+## <patches version, such as 2.4.0-dev.8>
+* <change>
 -->
 
 ## 2.4.0-dev.8
