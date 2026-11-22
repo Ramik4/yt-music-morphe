@@ -495,6 +495,9 @@ jobs:
             echo
             echo "Built with [RLX Patches $RLX_VER](https://github.com/$PATCHES_REPO/releases/tag/$PATCHES_REF) (Morphe $PATCHES_VER)."
             echo
+            # Turkish and Russian notes (changelog/<language>.md of this version), collapsed
+            python3 -I scripts/translations.py "$PATCHES_VER"
+            echo
             echo "## 📦 Files"
             echo
             # File and themes only, no package names

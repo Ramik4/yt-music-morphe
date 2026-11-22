@@ -85,6 +85,9 @@ jobs:
               grep -m1 '^Built with ' "$RUNNER_TEMP/body.md"
               echo
             fi
+            # Turkish and Russian notes (changelog/<language>.md of this version), collapsed
+            python3 -I scripts/translations.py "$PATCHES_VER"
+            echo
             # The files table, without the package column of older releases
             sed -n '/^## 📦 Files/,$p' "$RUNNER_TEMP/body.md" | python3 -c '
           import sys
@@ -121,11 +124,19 @@ jobs:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          # Same fields as the release workflow: English from Morphe, other languages kept
+          # Same fields as the release workflow: English from Morphe, other languages from changelog/<language>.md
+          # of this version (others kept)
           set_changelog() {
             jq --rawfile text "$RUNNER_TEMP/changes.txt" \
               '.changelog = ($text | rtrimstr("\n")) | .changelogs.en = ($text | rtrimstr("\n"))' "$1" > "$1.new"
             mv "$1.new" "$1"
+            for lang_file in changelog/*.md; do
+              [ -f "$lang_file" ] || continue
+              [ "$(head -n1 "$lang_file" | tr -d '[:space:]')" = "<!--${PATCHES_VER}-->" ] || continue
+              jq --arg lang "$(basename "$lang_file" .md)" --arg text "$(tail -n +2 "$lang_file")" \
+                '.changelogs[$lang] = $text' "$1" > "$1.new"
+              mv "$1.new" "$1"
+            done
           }
           # The stable files exist only after the first build on a stable Morphe version
           for id in apple morphe apple-stable morphe-stable; do
