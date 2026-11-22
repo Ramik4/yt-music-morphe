@@ -83,7 +83,21 @@ jobs:
               grep -m1 '^Built with ' "$RUNNER_TEMP/body.md"
               echo
             fi
-            sed -n '/^## 📦 Files/,$p' "$RUNNER_TEMP/body.md"
+            # The files table, without the package column of older releases
+            sed -n '/^## 📦 Files/,$p' "$RUNNER_TEMP/body.md" | python3 -c '
+          import sys
+          lines = sys.stdin.read().splitlines()
+          drop = None
+          for i, line in enumerate(lines):
+              cells = line.split("|")
+              names = [cell.strip() for cell in cells]
+              if drop is None and line.startswith("|") and "Package" in names:
+                  drop = names.index("Package")
+              if drop is not None and line.startswith("|") and len(cells) > drop:
+                  del cells[drop]
+                  lines[i] = "|".join(cells)
+          print("\n".join(lines))
+          '
           } > "$RUNNER_TEMP/notes.md"
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/notes.md"
 
