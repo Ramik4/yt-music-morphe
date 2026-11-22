@@ -11,4 +11,9 @@
     <string name="morphe_update_dialog_later">Daha sonra</string>
     <string name="morphe_update_latest">En son sürümü kullanıyorsunuz</string>
     <string name="morphe_update_failed">Güncellemeler denetlenemedi</string>
-    <string name="morphe_update_install_note">İndirme tamamlanınca güncel sürümü İndirilenler klasöründen kurmayı unutmayın</string>
+    <string name="morphe_update_install_note">İndirme bittikten sonra indirdiğiniz yeni sürümü kurmayı unutmayın</string>
+    <string name="morphe_update_channel_title">Güncelleme kanalı</string>
+    <string name="morphe_update_channel_entry_all">Kararlı ve geliştirme sürümleri</string>
+    <string name="morphe_update_channel_entry_stable">Yalnızca kararlı sürümler</string>
+    <string name="morphe_update_heading_features">Yeni özellikler</string>
+    <string name="morphe_update_heading_improvements">Diğer iyileştirmeler</string>

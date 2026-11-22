@@ -100,14 +100,14 @@ jobs:
         run: |
           # YouTube Music part of the Morphe changelog (RLX Patches includes it): the new features of a stable
           # version's own section, or of all dev versions since the last one released here. Fixes are not listed:
-          # the notes end with a "Bug fixes and other improvements" heading. Changes keep the order of the Morphe changelog.
+          # the notes end with the "Other improvements" heading (notes/improvements.md). Changes keep the order of the Morphe changelog.
           # Morphe versions that already have a release: tags v<yt>-rlx<rlx>-p<morphe>-b<build> (earlier: v<yt>-p<morphe>-b<build>)
           gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName -q '.[].tagName' \
             | sed -n 's/^v[^-]*-\(rlx[^-]*-\)\{0,1\}p\(.*\)-b[0-9]*$/\2/p' > "$RUNNER_TEMP/released.txt"
           echo "Released Morphe versions: $(tr '\n' ' ' < "$RUNNER_TEMP/released.txt")"
           python3 -I scripts/changelog.py patches-src/CHANGELOG.md "$PATCHES_VER" \
             "$RUNNER_TEMP/changes.md" "$RUNNER_TEMP/changes.txt" \
-            --mod-features notes/mod-features.md \
+            --improvements notes/improvements.md \
             --extra-features notes/extra-features.md --released "$RUNNER_TEMP/released.txt" \
             --skipped-features notes/skipped-features.md
           cat "$RUNNER_TEMP/changes.txt"
@@ -313,9 +313,26 @@ jobs:
             local out="$RUNNER_TEMP/out/${base}_${suffix}.apk"
 
             echo "::group::Variant $id ($pkg)"
+            # Notes of this build: English from Morphe; other languages from changelog/<language>.md,
+            # only if its first line <!-- version --> matches the patches version. The app shows them
+            # when it is the latest build, and the update info carries them.
+            local changelog changelogs
+            changelog=$(cat "$RUNNER_TEMP/changes.txt")
+            changelogs=$(jq -n --rawfile text "$RUNNER_TEMP/changes.txt" '{en: ($text | rtrimstr("\n"))}')
+            for f in changelog/*.md; do
+              [ -f "$f" ] || continue
+              if [ "$(head -n1 "$f" | tr -d '[:space:]')" != "<!--${PATCHES_VER}-->" ]; then
+                echo "::warning::$f is not for version $PATCHES_VER, skipped"
+                continue
+              fi
+              changelogs=$(jq --arg lang "$(basename "$f" .md)" --arg text "$(tail -n +2 "$f")" \
+                '. + {($lang): $text}' <<< "$changelogs")
+            done
             jq --slurpfile yt "$RUNNER_TEMP/app-patches.json" \
                --argjson clone "$clone" --arg pkg "$pkg" --arg colors "$colors" \
                --arg updurl "$(update_url "$id")" \
+               --arg stableurl "$(update_url "$id-stable")" \
+               --argjson changelogs "$changelogs" \
                --arg build "$CHECK_BUILD" \
                --arg verinfo "v$YT_VERSION · RLX $RLX_VER · Build $BUILD" '
               def opt($p; $k; $v): if .[0].patches[$p] then .[0].patches[$p].options[$k] = $v
@@ -333,6 +350,8 @@ jobs:
                 then opt("Theme"; "inAppDefaultColors"; $colors) else . end
               # Patches of the mod (extras/)
               | opt("Update checker"; "updateUrl"; $updurl)
+              | opt("Update checker"; "stableUpdateUrl"; $stableurl)
+              | opt("Update checker"; "changelogs"; ($changelogs | tojson))
               | opt("Update checker"; "buildNumber"; $build)
               | opt("Update checker"; "versionInfo"; $verinfo)
             ' "$RUNNER_TEMP/base.json" > "$opts"
@@ -372,22 +391,8 @@ jobs:
             fi
 
             # updates/<id>.json for the in-app update check (kept in the repository)
-            local name changelog
+            local name
             name=$(basename "$out")
-            # English from Morphe; other languages from changelog/<language>.md,
-            # only if its first line <!-- version --> matches the patches version
-            changelog=$(cat "$RUNNER_TEMP/changes.txt")
-            local changelogs
-            changelogs=$(jq -n --rawfile text "$RUNNER_TEMP/changes.txt" '{en: ($text | rtrimstr("\n"))}')
-            for f in changelog/*.md; do
-              [ -f "$f" ] || continue
-              if [ "$(head -n1 "$f" | tr -d '[:space:]')" != "<!--${PATCHES_VER}-->" ]; then
-                echo "::warning::$f is not for version $PATCHES_VER, skipped"
-                continue
-              fi
-              changelogs=$(jq --arg lang "$(basename "$f" .md)" --arg text "$(tail -n +2 "$f")" \
-                '. + {($lang): $text}' <<< "$changelogs")
-            done
             jq -n \
               --argjson build "$BUILD" --arg variant "$id" --arg pkg "$pkg" \
               --arg yt "$YT_VERSION" --arg patches "$RLX_VER" --arg tag "$TAG" \
@@ -401,6 +406,11 @@ jobs:
                 tag:$tag, apk_url:$apk, release_url:$page, forum_url:$forum,
                 changelog:$changelog, changelogs:$changelogs, sha256:$sha, size:$size}' \
               > "$RUNNER_TEMP/update-$id.json"
+            # Stable channel: only builds on a stable Morphe version (updates/<id>-stable.json)
+            case "$PATCHES_VER" in
+              *-dev*) ;;
+              *) cp "$RUNNER_TEMP/update-$id.json" "$RUNNER_TEMP/update-$id-stable.json" ;;
+            esac
             echo "::endgroup::"
           }
 
@@ -480,9 +490,10 @@ jobs:
           # The APKs are on R2 only (uploaded in the step before), the release links to them
           apk_link() { echo "[\`$1\`]($DL_BASE_URL/${R2_PREFIX}apk/$1)"; }
           {
-            echo "Built with [RLX Patches $RLX_VER](https://github.com/$PATCHES_REPO/releases/tag/$PATCHES_REF) (Morphe $PATCHES_VER)."
-            echo
+            # The install note and the changes first, under the title
             cat "$RUNNER_TEMP/changes.md"
+            echo
+            echo "Built with [RLX Patches $RLX_VER](https://github.com/$PATCHES_REPO/releases/tag/$PATCHES_REF) (Morphe $PATCHES_VER)."
             echo
             echo "## 📦 Files"
             echo
@@ -502,6 +513,12 @@ jobs:
           mkdir -p updates
           cp "$RUNNER_TEMP/update-apple.json" updates/apple.json
           cp "$RUNNER_TEMP/update-morphe.json" updates/morphe.json
+          # Stable channel, only for builds on a stable Morphe version
+          for id in apple morphe; do
+            if [ -f "$RUNNER_TEMP/update-$id-stable.json" ]; then
+              cp "$RUNNER_TEMP/update-$id-stable.json" "updates/$id-stable.json"
+            fi
+          done
           git config user.name "RAMiK4"
           git config user.email "60112744+RAMiK4@users.noreply.github.com"
           git add updates

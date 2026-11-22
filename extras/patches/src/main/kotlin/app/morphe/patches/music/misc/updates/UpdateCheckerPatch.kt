@@ -6,6 +6,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.patch.stringOption
 import app.morphe.patcher.util.returnEarly
+import app.morphe.patches.shared.misc.settings.preference.ListPreference
 import app.morphe.patches.shared.misc.settings.preference.NonInteractivePreference
 import app.morphe.patches.shared.misc.settings.preference.PreferenceScreenPreference
 import app.morphe.patches.shared.misc.settings.preference.SwitchPreference
@@ -14,6 +15,7 @@ import app.morphe.patches.music.misc.settings.PreferenceScreen
 import app.morphe.patches.music.misc.settings.settingsPatch
 import app.morphe.patches.music.shared.Constants.COMPATIBILITY_YOUTUBE_MUSIC
 import app.morphe.patches.music.shared.MusicActivityOnCreateFingerprint
+import app.morphe.patches.util.resource.ArrayResource
 import app.morphe.util.ResourceGroup
 import app.morphe.util.copyResources
 
@@ -61,6 +63,20 @@ val updateCheckerPatch = bytecodePatch(
         description = "URL of the JSON file with the latest build. Leave empty to not check.",
     )
 
+    val stableUpdateUrl by stringOption(
+        key = "stableUpdateUrl",
+        default = "",
+        title = "Stable update URL",
+        description = "URL of the JSON file with the latest stable build. Leave empty to offer no update channel.",
+    )
+
+    val changelogs by stringOption(
+        key = "changelogs",
+        default = "",
+        title = "Notes of this build",
+        description = "The notes of this build as JSON ({\"en\": \"...\"}), shown when it is the latest build.",
+    )
+
     val buildNumber by stringOption(
         key = "buildNumber",
         default = "0",
@@ -79,6 +95,24 @@ val updateCheckerPatch = bytecodePatch(
         val url = updateUrl.orEmpty().trim()
         if (url.isEmpty()) return@execute
 
+        val preferences = listOfNotNull(
+            SwitchPreference("morphe_update_check", summary = true),
+            // Every release, or stable builds only.
+            if (stableUpdateUrl.isNullOrBlank()) null else ListPreference(
+                key = "morphe_update_channel",
+                summaryKey = null,
+                entries = ArrayResource(
+                    "morphe_update_channel_entries",
+                    listOf("@string/morphe_update_channel_entry_all", "@string/morphe_update_channel_entry_stable"),
+                ),
+                entryValues = ArrayResource("morphe_update_channel_entry_values", listOf("all", "stable")),
+            ),
+            NonInteractivePreference(
+                key = "morphe_update_check_now",
+                tag = PREFERENCE_CLASS,
+                selectable = true,
+            ),
+        )
         PreferenceScreen.Screen(
             key = SCREEN_KEY,
             summaryKey = null,
@@ -86,14 +120,7 @@ val updateCheckerPatch = bytecodePatch(
             iconBold = "@drawable/${ICON_NAME}_bold",
             layout = "@layout/morphe_preference_with_icon",
             sorting = PreferenceScreenPreference.Sorting.UNSORTED,
-        ).addPreferences(
-            SwitchPreference("morphe_update_check", summary = true),
-            NonInteractivePreference(
-                key = "morphe_update_check_now",
-                tag = PREFERENCE_CLASS,
-                selectable = true,
-            ),
-        )
+        ).addPreferences(*preferences.toTypedArray())
 
         val extension = mutableClassDefBy(EXTENSION_CLASS)
         fun replace(name: String, value: String) =
@@ -101,6 +128,8 @@ val updateCheckerPatch = bytecodePatch(
                 ?: throw PatchException("Method $name not found")).returnEarly(value)
 
         replace("updateUrl", url)
+        replace("stableUpdateUrl", stableUpdateUrl.orEmpty().trim())
+        replace("currentChangelogs", changelogs.orEmpty())
         replace("currentBuild", buildNumber!!)
         replace("versionInfo", versionInfo.orEmpty())
 

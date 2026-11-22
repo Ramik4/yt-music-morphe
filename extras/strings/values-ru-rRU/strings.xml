@@ -11,4 +11,9 @@
     <string name="morphe_update_dialog_later">Позже</string>
     <string name="morphe_update_latest">Установлена последняя версия</string>
     <string name="morphe_update_failed">Не удалось проверить обновления</string>
-    <string name="morphe_update_install_note">Когда загрузка завершится, не забудьте установить новую версию из папки «Загрузки»</string>
+    <string name="morphe_update_install_note">Когда загрузка завершится, не забудьте установить загруженную новую версию</string>
+    <string name="morphe_update_channel_title">Канал обновлений</string>
+    <string name="morphe_update_channel_entry_all">Стабильные и тестовые версии</string>
+    <string name="morphe_update_channel_entry_stable">Только стабильные версии</string>
+    <string name="morphe_update_heading_features">Новые функции</string>
+    <string name="morphe_update_heading_improvements">Другие улучшения</string>

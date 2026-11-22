@@ -17,8 +17,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
-import android.text.style.ForegroundColorSpan;
 import android.text.style.LeadingMarginSpan;
+import android.text.style.ForegroundColorSpan;
 import android.text.style.LineBackgroundSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
@@ -26,6 +26,7 @@ import android.text.style.StyleSpan;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -35,19 +36,30 @@ import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.shared.settings.BooleanSetting;
 import app.morphe.extension.shared.settings.LongSetting;
+import app.morphe.extension.shared.settings.StringSetting;
 import app.morphe.extension.shared.theme.ThemeUtils;
 import app.morphe.extension.shared.ui.CustomDialog;
 import app.morphe.extension.shared.ui.Dim;
 
 /**
  * Checks a JSON file published with every release and offers the newer build.
- * The URL, the build number and the version text are set while patching.
+ * The URLs, the build number, the version text and the notes of this build are set while patching.
+ * <p>
+ * Two channels: every release (stable and development builds), or stable builds only, which have a JSON
+ * file of their own (written only for builds on a stable Morphe version).
  */
 @SuppressWarnings("unused")
 public final class UpdateCheckerPatch {
 
     public static final BooleanSetting UPDATE_CHECK =
             new BooleanSetting("morphe_update_check", TRUE);
+
+    /** {@link #CHANNEL_ALL} or {@link #CHANNEL_STABLE}. */
+    public static final StringSetting UPDATE_CHANNEL =
+            new StringSetting("morphe_update_channel", "all");
+
+    private static final String CHANNEL_ALL = "all";
+    private static final String CHANNEL_STABLE = "stable";
 
     /** When the update dialog was last shown automatically, and for which build. */
     private static final LongSetting LAST_PROMPT =
@@ -73,6 +85,16 @@ public final class UpdateCheckerPatch {
 
     // Replaced while patching.
     private static String updateUrl() {
+        return "";
+    }
+
+    // Replaced while patching.
+    private static String stableUpdateUrl() {
+        return "";
+    }
+
+    // Replaced while patching: the notes of this build, {"en": "...", ...}.
+    private static String currentChangelogs() {
         return "";
     }
 
@@ -123,9 +145,15 @@ public final class UpdateCheckerPatch {
         check(activity, true);
     }
 
+    /** The file of the selected channel. */
+    private static String channelUrl() {
+        final String stable = stableUpdateUrl();
+        return CHANNEL_STABLE.equals(UPDATE_CHANNEL.get()) && !stable.isEmpty() ? stable : updateUrl();
+    }
+
     private static void check(Activity activity, boolean manual) {
-        final String url = updateUrl();
-        if (url.isEmpty() || checking) return;
+        final String url = channelUrl();
+        if (updateUrl().isEmpty() || checking) return;
 
         if (!Utils.isNetworkConnected()) {
             if (manual) Utils.showToastShort(str("morphe_update_failed"));
@@ -135,8 +163,9 @@ public final class UpdateCheckerPatch {
         checking = true;
         Utils.runOnBackgroundThread(() -> {
             try {
+                // No stable build published yet: nothing newer on this channel.
                 JSONObject json = fetch(url);
-                final long latest = json.getLong("build");
+                final long latest = json == null ? 0 : json.getLong("build");
                 final long current = currentBuildNumber();
                 final long now = System.currentTimeMillis();
                 final boolean skipped = !manual && latest == SKIPPED_BUILD.get();
@@ -145,8 +174,8 @@ public final class UpdateCheckerPatch {
                         && now - LAST_PROMPT.get() < REMIND_INTERVAL_MS;
 
                 if (latest <= current || skipped || remindLater) {
-                    if (manual) Utils.runOnMainThread(() ->
-                            Utils.showToastShort(str("morphe_update_latest")));
+                    // Checked by hand: the notes of the installed build, without download choices.
+                    if (manual) Utils.runOnMainThread(() -> showCurrentDialog(activity));
                     return;
                 }
 
@@ -165,6 +194,7 @@ public final class UpdateCheckerPatch {
         });
     }
 
+    /** @return Null if the file does not exist (the stable file before the first stable build). */
     private static JSONObject fetch(String url) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setConnectTimeout(TIMEOUT_MS);
@@ -173,6 +203,7 @@ public final class UpdateCheckerPatch {
         connection.setRequestProperty("Cache-Control", "no-cache");
         try {
             final int code = connection.getResponseCode();
+            if (code == HttpURLConnection.HTTP_NOT_FOUND && !url.equals(updateUrl())) return null;
             if (code != HttpURLConnection.HTTP_OK) {
                 throw new IllegalStateException("HTTP " + code);
             }
@@ -196,7 +227,8 @@ public final class UpdateCheckerPatch {
         final String apkUrl = json.optString("apk_url", json.optString("release_url"));
         final String version = str("morphe_update_dialog_version",
                 json.optString("yt_version"), json.optString("patches"));
-        final String changelog = localizedChangelog(activity, json).trim();
+        final String changelog = localizedChangelog(activity, json.optJSONObject("changelogs"),
+                json.optString("changelog")).trim();
         final CharSequence message = styledChangelog(version, str("morphe_update_install_note"), changelog);
 
         var dialogPair = CustomDialog.create(
@@ -232,6 +264,37 @@ public final class UpdateCheckerPatch {
         });
         stackButtons(activity, buttons);
 
+        Utils.showDialog(activity, dialogPair.first);
+    }
+
+    /**
+     * The installed build is the latest of the channel: its version and notes, with only an OK button.
+     */
+    private static void showCurrentDialog(Activity activity) {
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
+
+        JSONObject changelogs = null;
+        try {
+            final String text = currentChangelogs();
+            if (!text.isEmpty()) changelogs = new JSONObject(text);
+        } catch (Exception ex) {
+            Logger.printDebug(() -> "Could not read the notes of this build", ex);
+        }
+        final String changelog = localizedChangelog(activity, changelogs, "").trim();
+        final CharSequence message = styledChangelog(versionInfo(), null, changelog);
+
+        var dialogPair = CustomDialog.create(
+                activity,
+                str("morphe_update_latest"),            // Title.
+                message,                                 // Message.
+                null,                                    // No EditText.
+                null,                                    // OK button text: "OK".
+                () -> {},                                // OK button action.
+                null,                                    // No Cancel button.
+                null,                                    // No Neutral button.
+                null,
+                false
+        );
         Utils.showDialog(activity, dialogPair.first);
     }
 
@@ -275,16 +338,19 @@ public final class UpdateCheckerPatch {
      * Section titles of the changelog are bold with a thin, faint rule under them, like the
      * headings of the release notes on GitHub. Separator lines of older changelogs are dropped.
      * The note below the version reminds that the downloaded APK has to be installed.
+     * The two headings of the notes are shown in the language of the app.
      */
     private static CharSequence styledChangelog(String version, String note, String changelog) {
         SpannableStringBuilder text = new SpannableStringBuilder(version);
         final int foreground = ThemeUtils.getAppForegroundColor();
         final int ruleColor = (foreground & 0x00FFFFFF) | 0x33000000;
-        final int noteStart = text.append("\n").length();
-        text.append(note);
-        text.setSpan(new ForegroundColorSpan((foreground & 0x00FFFFFF) | 0xB3000000), noteStart,
-                text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        text.setSpan(new RelativeSizeSpan(0.9f), noteStart, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (note != null && !note.isEmpty()) {
+            final int noteStart = text.append("\n").length();
+            text.append("\u24D8 ").append(note);
+            text.setSpan(new ForegroundColorSpan((foreground & 0x00FFFFFF) | 0xB3000000), noteStart,
+                    text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            text.setSpan(new RelativeSizeSpan(0.9f), noteStart, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
         // Wrapped lines of an item start under its text, not under the bullet.
         Paint bulletPaint = new Paint();
         bulletPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 16,
@@ -297,7 +363,7 @@ public final class UpdateCheckerPatch {
             // A blank line before every section, a short gap between a rule and its items.
             text.append(heading ? "\n\n" : "\n");
             final int start = text.length();
-            text.append(line);
+            text.append(heading ? localizedHeading(line) : line);
             if (!heading) {
                 text.setSpan(new LeadingMarginSpan.Standard(0, bulletIndent), start, text.length(),
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -338,11 +404,17 @@ public final class UpdateCheckerPatch {
         }
     }
 
+    /** "✨ New features" and "🔧 Other improvements" in the language of the app, other headings as they are. */
+    private static String localizedHeading(String heading) {
+        if (heading.startsWith("\u2728")) return "\u2728 " + str("morphe_update_heading_features");
+        if (heading.startsWith("\uD83D\uDD27")) return "\uD83D\uDD27 " + str("morphe_update_heading_improvements");
+        return heading;
+    }
+
     /**
-     * Changelog in the app language, then English, then the default changelog (Russian).
+     * Changelog in the app language, then English, then the default changelog.
      */
-    private static String localizedChangelog(Activity activity, JSONObject json) {
-        JSONObject changelogs = json.optJSONObject("changelogs");
+    private static String localizedChangelog(Activity activity, JSONObject changelogs, String fallback) {
         if (changelogs != null) {
             String language = activityLanguage(activity);
             // Russian is also the closest choice for these languages.
@@ -353,7 +425,7 @@ public final class UpdateCheckerPatch {
             if (text.isEmpty()) text = changelogs.optString("en");
             if (!text.isEmpty()) return text;
         }
-        return json.optString("changelog");
+        return fallback;
     }
 
     private static String activityLanguage(Activity activity) {
