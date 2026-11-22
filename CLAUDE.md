@@ -13,11 +13,12 @@
 ## Release notes (owner's rules, for every release)
 
 - Order: the install note (`ⓘ …`) under the title, `## ✨ New features`, `## 🌟 Mod features`
-  (`notes/mod-features.md`, in every release), `## 🔧 Other improvements` (alone, or important mod changes from
-  `notes/improvements.md`), the line on the RLX Patches version, `## 📦 Files`.
+  (`notes/mod-features.md`, in every release), `## 🔧 Other improvements` (the heading alone, no fixes of Morphe
+  or of the mod), the line on the RLX Patches version, `## 📦 Files`.
 - New features: also those of the Morphe versions the mod did not release (every dev version since the last
   release; `scripts/changelog.py`).
-- No fix lists and no counts of fixes; "Morphe" only in the APK file names (app names: YouTube RLX / YT Music RLX).
+- No fix lists and no counts of fixes. Release title: "YT Music Morphe v<app> · RLX Patches <RLX>"; on the device the
+  app names are YouTube RLX / YT Music RLX ("Morphe" there only in the APK file names).
 - No package names and no theme color codes in the notes, the files table (file and themes only) or the
   README variants. Variants in the notes: "Amoled (…)" and "Original (BBK Clone, …)".
 - To fix the notes of a published release: Actions → Update release notes (`release-notes.yml`).

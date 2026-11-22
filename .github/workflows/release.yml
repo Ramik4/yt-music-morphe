@@ -34,7 +34,7 @@ concurrency:
 
 env:
   PATCHES_REPO: Ramik4/rlx-patches
-  APP_TITLE: YT Music RLX
+  APP_TITLE: YT Music Morphe
   FILE_PREFIX: YT_Music_Morphe
   APP_PACKAGE: com.google.android.apps.youtube.music
   # APKs and update info on Cloudflare R2 below music/, served by the Worker of RAMiK4/yt-morphe
@@ -100,14 +100,14 @@ jobs:
         run: |
           # YouTube Music part of the Morphe changelog (RLX Patches includes it): the new features of a stable
           # version's own section, or of all dev versions since the last one released here. Fixes are not listed:
-          # the notes end with the "Other improvements" heading (notes/improvements.md). Changes keep the order of the Morphe changelog.
+          # the notes end with the "Other improvements" heading alone. Changes keep the order of the Morphe changelog.
           # Morphe versions that already have a release: tags v<yt>-rlx<rlx>-p<morphe>-b<build> (earlier: v<yt>-p<morphe>-b<build>)
           gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName -q '.[].tagName' \
             | sed -n 's/^v[^-]*-\(rlx[^-]*-\)\{0,1\}p\(.*\)-b[0-9]*$/\2/p' > "$RUNNER_TEMP/released.txt"
           echo "Released Morphe versions: $(tr '\n' ' ' < "$RUNNER_TEMP/released.txt")"
           python3 -I scripts/changelog.py patches-src/CHANGELOG.md "$PATCHES_VER" \
             "$RUNNER_TEMP/changes.md" "$RUNNER_TEMP/changes.txt" \
-            --mod-features notes/mod-features.md --improvements notes/improvements.md \
+            --mod-features notes/mod-features.md \
             --extra-features notes/extra-features.md --released "$RUNNER_TEMP/released.txt" \
             --skipped-features notes/skipped-features.md
           cat "$RUNNER_TEMP/changes.txt"
