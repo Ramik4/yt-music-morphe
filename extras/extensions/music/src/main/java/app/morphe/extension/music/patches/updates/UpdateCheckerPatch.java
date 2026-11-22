@@ -175,7 +175,10 @@ public final class UpdateCheckerPatch {
 
                 if (latest <= current || skipped || remindLater) {
                     // Checked by hand: the notes of the installed build, without download choices.
-                    if (manual) Utils.runOnMainThread(() -> showCurrentDialog(activity));
+                    // The update info of the installed build carries its notes as they are now (with the
+                    // translations, also those added after the release).
+                    if (manual) Utils.runOnMainThread(() -> showCurrentDialog(activity,
+                            json != null && latest == current ? json : null));
                     return;
                 }
 
@@ -269,19 +272,25 @@ public final class UpdateCheckerPatch {
 
     /**
      * The installed build is the latest of the channel: its version and notes, with only an OK button.
+     * The version line is the one of the update dialog, the notes are in the language of the app.
+     *
+     * @param json The update info of the installed build, or null to use the notes of the APK.
      */
-    private static void showCurrentDialog(Activity activity) {
+    private static void showCurrentDialog(Activity activity, JSONObject json) {
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
 
-        JSONObject changelogs = null;
-        try {
-            final String text = currentChangelogs();
-            if (!text.isEmpty()) changelogs = new JSONObject(text);
-        } catch (Exception ex) {
-            Logger.printDebug(() -> "Could not read the notes of this build", ex);
+        JSONObject changelogs = json == null ? null : json.optJSONObject("changelogs");
+        if (changelogs == null || changelogs.length() == 0) {
+            try {
+                final String text = currentChangelogs();
+                if (!text.isEmpty()) changelogs = new JSONObject(text);
+            } catch (Exception ex) {
+                Logger.printDebug(() -> "Could not read the notes of this build", ex);
+            }
         }
-        final String changelog = localizedChangelog(activity, changelogs, "").trim();
-        final CharSequence message = styledChangelog(versionInfo(), null, changelog);
+        final String changelog = localizedChangelog(activity, changelogs,
+                json == null ? "" : json.optString("changelog")).trim();
+        final CharSequence message = styledChangelog(currentVersion(json), null, changelog);
 
         var dialogPair = CustomDialog.create(
                 activity,
@@ -296,6 +305,25 @@ public final class UpdateCheckerPatch {
                 false
         );
         Utils.showDialog(activity, dialogPair.first);
+    }
+
+    /**
+     * "YT Music RLX v<app> · RLX Patches <patches>", as in the update dialog and the release title.
+     * Read from the update info of the installed build, else from the version text of the APK
+     * ("v<app> · RLX <patches> · Build <build>").
+     */
+    private static String currentVersion(JSONObject json) {
+        String app = json == null ? "" : json.optString("yt_version");
+        String patches = json == null ? "" : json.optString("patches");
+        final String info = versionInfo();
+        if (app.isEmpty() || patches.isEmpty()) {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("^v(\\S+)\\s*\u00B7\\s*RLX\\s+(\\S+)").matcher(info.trim());
+            if (!matcher.find()) return info;
+            app = matcher.group(1);
+            patches = matcher.group(2);
+        }
+        return str("morphe_update_dialog_version", app, patches);
     }
 
     /**
