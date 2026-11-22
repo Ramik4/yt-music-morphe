@@ -24,8 +24,8 @@ The changes of each version are listed in the [releases](https://github.com/RAMi
 
 | Variant | |
 |---|---|
-| **Amoled** (`…_Amoled.apk`) | All in-app themes, Pure Black by default (menus #0F0F0F) |
-| **Original_BBK** (`…_Original_BBK.apk`, clone `com.apple.android.music`) | All in-app themes, Modern Dark by default, plus Dynamic Island for BBK all devices |
+| **Amoled** (`…_Amoled.apk`) | All in-app themes, Pure Black by default |
+| **Original_BBK** (`…_Original_BBK.apk`) | All in-app themes, Modern Dark by default, plus Dynamic Island for BBK all devices |
 
 Both variants can be installed side by side. The theme color can be changed at any time: *RLX settings → General*.
 

@@ -497,10 +497,11 @@ jobs:
             echo
             echo "## 📦 Files"
             echo
-            echo "| File | Package | Theme |"
-            echo "|---|---|---|"
-            echo "| $(apk_link "$MORPHE") | \`app.morphe.android.apps.youtube.music\` | All in-app themes, Pure Black by default |"
-            echo "| $(apk_link "$CLONE") | \`com.apple.android.music\` (clone) | All in-app themes, Modern Dark by default |"
+            # File and themes only, no package names
+            echo "| File | Theme |"
+            echo "|---|---|"
+            echo "| $(apk_link "$MORPHE") | All in-app themes, Pure Black by default |"
+            echo "| $(apk_link "$CLONE") | All in-app themes, Modern Dark by default |"
           } > "$RUNNER_TEMP/notes.md"
           gh release create "$TAG" \
             --title "$APP_TITLE v$YT_VERSION · RLX Patches $RLX_VER" \
