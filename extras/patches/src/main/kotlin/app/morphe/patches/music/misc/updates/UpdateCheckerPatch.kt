@@ -123,9 +123,13 @@ val updateCheckerPatch = bytecodePatch(
         ).addPreferences(*preferences.toTypedArray())
 
         val extension = mutableClassDefBy(EXTENSION_CLASS)
+        // The value becomes a smali string: quotes, backslashes and line breaks (the notes) are escaped.
         fun replace(name: String, value: String) =
             (extension.methods.firstOrNull { it.name == name }
-                ?: throw PatchException("Method $name not found")).returnEarly(value)
+                ?: throw PatchException("Method $name not found")).returnEarly(
+                value.replace("\\", "\\\\").replace("\"", "\\\"")
+                    .replace("\r", "").replace("\n", "\\n")
+            )
 
         replace("updateUrl", url)
         replace("stableUpdateUrl", stableUpdateUrl.orEmpty().trim())
