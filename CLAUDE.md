@@ -22,3 +22,6 @@
 - No package names and no theme color codes in the notes, the files table (file and themes only) or the
   README variants. Variants in the notes: "Amoled (…)" and "Original (BBK Clone, …)".
 - To fix the notes of a published release: Actions → Update release notes (`release-notes.yml`).
+- Translations: before every release, write `changelog/tr.md` and `changelog/ru.md` for its Morphe version (first
+  line `<!-- <version> -->`, the same text as the English notes of the app, translated). The app shows them in its
+  language; the release notes add them as collapsible Turkish and Russian sections (`scripts/translations.py`).
