@@ -7,8 +7,8 @@ Dev version: the new features of all dev versions since the last released one (R
 version before them was not released either (the first dev build after a skipped stable), the new features
 of that stable version follow.
 
-Fixes are not listed one by one: the notes always end with the "Other improvements" heading, with the
-important changes of the mod under it when there are any (IMPROVEMENTS), else alone.
+Fixes are not listed: the notes always end with the "Other improvements" heading alone, neither Morphe's
+fixes nor the mod's are listed under it.
 Each group is a title followed by its changes, without version headings:
 
     ⓘ When the download is complete, ...   (release notes only, the app shows its own note)
@@ -16,8 +16,7 @@ Each group is a title followed by its changes, without version headings:
     • ...
     🌟 Mod features      (from MOD_FEATURES)
     • ...
-    🔧 Other improvements
-    • ...                (from IMPROVEMENTS, if any)
+    🔧 Other improvements   (the heading alone)
 
 The in-app dialog shows the titles bold with a thin rule under them. The release notes
 use "## <title>" headings (GitHub draws the same kind of rule) and add the files table.
@@ -28,16 +27,13 @@ RELEASED: patches versions that already have a release of the mod, one per line 
 
 MOD_FEATURES: the features of the mod ("* item" lines), listed in every release after the new features.
 
-IMPROVEMENTS: important changes of the mod, per patches version ("## <version>" and "* item" lines),
-listed under "Other improvements".
-
 EXTRA_FEATURES: same format, listed after the Morphe new features of that version. Only for releases that
 skip versions (for example the first dev build after a stable one): important features of the skipped
 versions that the selected sections do not list. Not a general rule; most versions have no section.
 
 The Markdown file is the release notes, the text file is the changelog of the in-app update dialog.
 
-Usage: changelog.py CHANGELOG.md VERSION OUT_MARKDOWN OUT_TEXT [--mod-features FILE] [--improvements FILE]
+Usage: changelog.py CHANGELOG.md VERSION OUT_MARKDOWN OUT_TEXT [--mod-features FILE]
                     [--extra-features FILE] [--released FILE] [--skipped-features FILE]
 """
 import argparse
@@ -172,7 +168,6 @@ def main():
     parser.add_argument("out_md")
     parser.add_argument("out_txt")
     parser.add_argument("--mod-features")
-    parser.add_argument("--improvements")
     parser.add_argument("--extra-features")
     parser.add_argument("--released")
     parser.add_argument("--skipped-features")
@@ -182,7 +177,6 @@ def main():
     released = read_released(args.released) if args.released else set()
     selected = select(parse(args.changelog), version, released)
     extra_features = read_version_items(args.extra_features, version) if args.extra_features else []
-    improvements = read_version_items(args.improvements, version) if args.improvements else []
     mod_features = read_mod_features(args.mod_features) if args.mod_features else []
     # Morphe features that do not apply to the mod (such as changes of the Morphe about page, which RLX
     # Patches replaces): an item is left out when it contains one of these texts, without formatting.
@@ -212,11 +206,9 @@ def main():
         txt += [f"• {plain(item)}" for item in items]
         txt.append("")
 
-    # Fixes are not listed one by one; the closing heading ends the notes, with the important changes of the mod.
+    # Fixes are not listed; the closing heading alone ends the notes.
     md += [f"## {CLOSING_TITLE}", ""]
-    md += [f"* {item}" for item in improvements]
     txt.append(CLOSING_TITLE)
-    txt += [f"• {plain(item)}" for item in improvements]
 
     open(args.out_md, "w", encoding="utf-8").write("\n".join(md).strip() + "\n")
     open(args.out_txt, "w", encoding="utf-8").write("\n".join(txt).strip() + "\n")
