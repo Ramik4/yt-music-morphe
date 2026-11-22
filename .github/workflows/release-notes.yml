@@ -65,7 +65,7 @@ jobs:
             | sed -n 's/^v[^-]*-\(rlx[^-]*-\)\{0,1\}p\(.*\)-b[0-9]*$/\2/p' > "$RUNNER_TEMP/released.txt" || true
           python3 -I scripts/changelog.py patches-src/CHANGELOG.md "$PATCHES_VER" \
             "$RUNNER_TEMP/changes.md" "$RUNNER_TEMP/changes.txt" \
-            --improvements notes/improvements.md \
+            --mod-features notes/mod-features.md --improvements notes/improvements.md \
             --extra-features notes/extra-features.md --released "$RUNNER_TEMP/released.txt" \
             --skipped-features notes/skipped-features.md
           cat "$RUNNER_TEMP/changes.txt"

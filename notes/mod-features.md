@@ -1,5 +1,6 @@
-<!-- Features of the mod, shown in the release notes and the in-app changelog under "🌟 Mod Features" and on the repository page. -->
-* Built with RLX Patches: all Morphe patches for YT Music with the RLX settings, icons and defaults
-* Recommended settings applied on first start
-* Two variants with all in-app themes: Amoled (Pure Black by default, menus #0F0F0F) and Original_BBK (clone, Modern Dark by default)
-* In-app update check for new builds
+<!-- Features of the mod, shown in every release (notes and in-app changelog) under "🌟 Mod features", after the new features. -->
+* RLX Patches: every Morphe patch for YouTube Music, with the RLX settings, icons and recommended defaults
+* Quick download menu for songs, with the MP3 marked
+* Recommended settings from the first start
+* Two variants with every in-app theme: Amoled (Pure Black, menus #0F0F0F) and Original_BBK (clone, Modern Dark)
+* In-app update check, with stable and development channels

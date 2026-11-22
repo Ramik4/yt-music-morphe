@@ -404,9 +404,13 @@ public final class UpdateCheckerPatch {
         }
     }
 
-    /** "✨ New features" and "🔧 Other improvements" in the language of the app, other headings as they are. */
+    /**
+     * "✨ New features", "🌟 Mod features" and "🔧 Other improvements" in the language of the app,
+     * other headings as they are.
+     */
     private static String localizedHeading(String heading) {
         if (heading.startsWith("\u2728")) return "\u2728 " + str("morphe_update_heading_features");
+        if (heading.startsWith("\uD83C\uDF1F")) return "\uD83C\uDF1F " + str("morphe_update_heading_mod_features");
         if (heading.startsWith("\uD83D\uDD27")) return "\uD83D\uDD27 " + str("morphe_update_heading_improvements");
         return heading;
     }

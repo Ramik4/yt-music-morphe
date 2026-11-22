@@ -5,7 +5,7 @@
     <string name="morphe_update_check_now_title">Şimdi denetle</string>
     <string name="morphe_update_check_now_summary">Yeni sürüm olup olmadığını denetle</string>
     <string name="morphe_update_dialog_title">Güncelleme mevcut</string>
-    <string name="morphe_update_dialog_version">YT Music Morphe v%1$s · RLX %2$s</string>
+    <string name="morphe_update_dialog_version">YT Music RLX v%1$s · RLX Patches %2$s</string>
     <string name="morphe_update_dialog_download">İndir</string>
     <string name="morphe_update_dialog_skip">Bu sürümü atla</string>
     <string name="morphe_update_dialog_later">Daha sonra</string>
@@ -16,4 +16,5 @@
     <string name="morphe_update_channel_entry_all">Kararlı ve geliştirme sürümleri</string>
     <string name="morphe_update_channel_entry_stable">Yalnızca kararlı sürümler</string>
     <string name="morphe_update_heading_features">Yeni özellikler</string>
+    <string name="morphe_update_heading_mod_features">Mod özellikleri</string>
     <string name="morphe_update_heading_improvements">Diğer iyileştirmeler</string>
