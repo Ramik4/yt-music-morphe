@@ -11,4 +11,9 @@
     <string name="morphe_update_dialog_later">Later</string>
     <string name="morphe_update_latest">You have the latest version</string>
     <string name="morphe_update_failed">Could not check for updates</string>
-    <string name="morphe_update_install_note">When the download is complete, install the new version from the Downloads folder</string>
+    <string name="morphe_update_install_note">When the download is complete, don\'t forget to install the new version you downloaded</string>
+    <string name="morphe_update_channel_title">Update channel</string>
+    <string name="morphe_update_channel_entry_all">Stable and development versions</string>
+    <string name="morphe_update_channel_entry_stable">Stable versions only</string>
+    <string name="morphe_update_heading_features">New features</string>
+    <string name="morphe_update_heading_improvements">Other improvements</string>

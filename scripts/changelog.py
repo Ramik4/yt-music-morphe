@@ -7,16 +7,15 @@ Dev version: the new features of all dev versions since the last released one (R
 version before them was not released either (the first dev build after a skipped stable), the new features
 of that stable version follow.
 
-Bug fixes and improvements are not listed: the notes always end with a closing heading instead,
-and the release notes with the install note under it.
+Fixes are not listed one by one: the notes always end with the "Other improvements" heading, with the
+important changes of the mod under it when there are any (IMPROVEMENTS), else alone.
 Each group is a title followed by its changes, without version headings:
 
-    ✨ New Features
+    ⓘ When the download is complete, ...   (release notes only, the app shows its own note)
+    ✨ New features
     • ...
-    🌟 Mod Features     (from MOD_FEATURES)
-    • ...
-    🔧 Bug fixes and other improvements
-    ⓘ After downloading, ...   (release notes only)
+    🔧 Other improvements
+    • ...                (from IMPROVEMENTS, if any)
 
 The in-app dialog shows the titles bold with a thin rule under them. The release notes
 use "## <title>" headings (GitHub draws the same kind of rule) and add the files table.
@@ -25,13 +24,16 @@ Newer versions come first; within a version the order of the Morphe changelog is
 
 RELEASED: patches versions that already have a release of the mod, one per line or separated by spaces.
 
+IMPROVEMENTS: important changes of the mod, per patches version ("## <version>" and "* item" lines),
+listed under "Other improvements".
+
 EXTRA_FEATURES: same format, listed after the Morphe new features of that version. Only for releases that
 skip versions (for example the first dev build after a stable one): important features of the skipped
 versions that the selected sections do not list. Not a general rule; most versions have no section.
 
 The Markdown file is the release notes, the text file is the changelog of the in-app update dialog.
 
-Usage: changelog.py CHANGELOG.md VERSION OUT_MARKDOWN OUT_TEXT [--mod-features FILE]
+Usage: changelog.py CHANGELOG.md VERSION OUT_MARKDOWN OUT_TEXT [--improvements FILE]
                     [--extra-features FILE] [--released FILE] [--skipped-features FILE]
 """
 import argparse
@@ -44,15 +46,15 @@ SKIPPED_GROUPS = ("app support",)
 # Change types of the Morphe changelog. Older changelogs have titles without emoji.
 # Only the new features are listed.
 GROUPS = (
-    ("feature", "✨ New Features"),
+    ("feature", "✨ New features"),
     ("fix", "🐛 Bug Fixes"),
     ("improvement", "🔧 Improvements"),
 )
 FEATURE_GROUP = 0
-MOD_FEATURES_TITLE = "🌟 Mod Features"
-CLOSING_TITLE = "🔧 Bug fixes and other improvements"
-# Release notes only: the APK downloaded from the release page is installed by hand.
-INSTALL_NOTE = "ⓘ After downloading, don't forget to install the new version from the Downloads folder"
+CLOSING_TITLE = "🔧 Other improvements"
+# Release notes only, under the title: the APK downloaded from the release page is installed by hand.
+# The app shows the same note in its own language.
+INSTALL_NOTE = "ⓘ When the download is complete, don't forget to install the new version you downloaded"
 
 
 def clean(text):
@@ -164,7 +166,7 @@ def main():
     parser.add_argument("version")
     parser.add_argument("out_md")
     parser.add_argument("out_txt")
-    parser.add_argument("--mod-features")
+    parser.add_argument("--improvements")
     parser.add_argument("--extra-features")
     parser.add_argument("--released")
     parser.add_argument("--skipped-features")
@@ -174,7 +176,7 @@ def main():
     released = read_released(args.released) if args.released else set()
     selected = select(parse(args.changelog), version, released)
     extra_features = read_version_items(args.extra_features, version) if args.extra_features else []
-    mod_features = read_mod_features(args.mod_features) if args.mod_features else []
+    improvements = read_version_items(args.improvements, version) if args.improvements else []
     # Morphe features that do not apply to the mod (such as changes of the Morphe about page, which RLX
     # Patches replaces): an item is left out when it contains one of these texts, without formatting.
     skipped = [plain(t).lower() for t in read_mod_features(args.skipped_features)] if args.skipped_features else []
@@ -188,11 +190,7 @@ def main():
     features = [item for item in features if not any(t in plain(item).lower() for t in skipped)]
     if features:
         groups.append((GROUPS[FEATURE_GROUP][1], features))
-    # The features of the mod follow the new features of Morphe.
-    if mod_features:
-        groups.append((MOD_FEATURES_TITLE, mod_features))
-
-    md, txt = [], []
+    md, txt = [f"> {INSTALL_NOTE}", ""], []
     for title, items in groups:
         # Markdown: "##" headings get GitHub's thin rule under them.
         md += [f"## {title}", ""]
@@ -203,9 +201,11 @@ def main():
         txt += [f"• {plain(item)}" for item in items]
         txt.append("")
 
-    # Fixes are not listed one by one; a closing heading ends the notes.
-    md += [f"## {CLOSING_TITLE}", "", INSTALL_NOTE]
+    # Fixes are not listed one by one; the closing heading ends the notes, with the important changes of the mod.
+    md += [f"## {CLOSING_TITLE}", ""]
+    md += [f"* {item}" for item in improvements]
     txt.append(CLOSING_TITLE)
+    txt += [f"• {plain(item)}" for item in improvements]
 
     open(args.out_md, "w", encoding="utf-8").write("\n".join(md).strip() + "\n")
     open(args.out_txt, "w", encoding="utf-8").write("\n".join(txt).strip() + "\n")
