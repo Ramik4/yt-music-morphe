@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/Ramik4/rlx-patches/main/patches-bundle.png" width="112" alt="RLX icon">
+<img src="images/icon.png" width="112" alt="YT Music RLX icon">
 
 # YT Music Morphe
 
