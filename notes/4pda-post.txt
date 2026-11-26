@@ -47,7 +47,7 @@
 
 [spoiler=☑ Информация о моде »]
 
-[b]• Android:[/b] 9+ (8–17)
+[b]• Android:[/b] 9+ (9–17)
 [b]• Архитектура:[/b] arm64-v8a
 [b]• Языки:[/b] Все / Full Languages
 [b]• Название:[/b] YT Music RLX [size=1](по умолчанию)[/size], YT Music X, YouTube Music, YT Music, YT Music Morphe, RLX Music
