@@ -290,7 +290,7 @@ public final class UpdateCheckerPatch {
         }
         final String changelog = localizedChangelog(activity, changelogs,
                 json == null ? "" : json.optString("changelog")).trim();
-        final CharSequence message = styledChangelog(currentVersion(json), null, changelog);
+        final CharSequence message = styledChangelog(currentVersion(json), str("morphe_update_install_note"), changelog);
 
         var dialogPair = CustomDialog.create(
                 activity,
